@@ -17,7 +17,6 @@ opt.batch_size = 1
 opt.coord_conv_template = True
 opt.error_model = 'loss_surface'
 opt.error_target = 'iou_whole'
-opt.goal_image_path = '../../pitcreg/sportsfield_release/data/world_cup_2018.png'
 opt.guess_model = 'init_guess'
 opt.homo_param_method = 'deep_homography'
 opt.load_weights_error_model = 'pretrained_loss_surface'
@@ -27,12 +26,12 @@ opt.need_single_image_normalization = True
 opt.need_spectral_norm_error_model = True
 opt.need_spectral_norm_upstream = False
 opt.optim_criterion = 'l1loss'
-opt.optim_iters = 200
+opt.optim_iters = 150
 opt.optim_method = 'stn'
-opt.optim_type = 'adam'
-opt.out_dir = '../../pitchreg/sportsfield_release/out/'
+opt.optim_type = 'sgd'
+opt.out_dir = 'pitchreg/sportsfield_release/out/'
 opt.prevent_neg = 'sigmoid'
-opt.template_path = '../../pitchreg/sportsfield_release/data/pitch_diagram.png'
+opt.template_path = 'pitchreg/sportsfield_release/data/pitch_diagram.png'
 opt.warp_dim = 8
 opt.warp_type = 'homography'
 
@@ -142,12 +141,12 @@ def warp_frame(H, diagram, frame):
     # print("er")
 
 
-def run(frame, diagram):
+def run(frame, diagram, refresh=True):
     img = reformat(frame)
     template = read_template()
 
     e2e = end_2_end_optimization.End2EndOptimFactory.get_end_2_end_optimization_model(opt)
-    orig_homography, optim_homography = e2e.optim(img[None], template[None])
+    orig_homography, optim_homography = e2e.optim(img[None], template[None], refresh=refresh)
 
     # return stage1(diagram, optim_homography)
     return optim_homography[0]

@@ -2,9 +2,10 @@ import cv2
 import numpy as np
 
 
-def represent_players(diagram, coordinates, teams, circle_radius=20, colour0=(30, 10, 240), colour1=(255, 100, 10)):
+def represent_players(diagram, coordinates, player_ids, player_teams, circle_radius=20, colour0=(30, 10, 240), colour1=(255, 100, 10)):
     diagram_with_circles = diagram.copy()
-    for coord, team in zip(coordinates, teams):
+    for coord, id in zip(coordinates, player_ids):
+        team = player_teams[id]
         coord = tuple(tuple(map(int, coord)) for c in coord)[0]
         # coord = coord[::-1]
         colour = colour0 if team == 1 else colour1

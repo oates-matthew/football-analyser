@@ -1,0 +1,6 @@
+[submodule "swav"]
+	path = swav
+	url = https://github.com/facebookresearch/swav.git
+[submodule "Deep-EIoU"]
+	path = Deep-EIoU
+	url = https://github.com/hsiangwei0903/Deep-EIoU

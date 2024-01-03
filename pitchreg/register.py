@@ -16,17 +16,17 @@ opt = fake_options.FakeOptions()
 opt.batch_size = 1
 opt.coord_conv_template = True
 opt.error_model = 'loss_surface'
-opt.error_target = 'iou_whole'
+opt.error_target = 'iou_part'
 opt.guess_model = 'init_guess'
 opt.homo_param_method = 'deep_homography'
 opt.load_weights_error_model = 'pretrained_loss_surface'
 opt.load_weights_upstream = 'pretrained_init_guess'
-opt.lr_optim = 1e-5
+opt.lr_optim = 1e-4
 opt.need_single_image_normalization = True
 opt.need_spectral_norm_error_model = True
 opt.need_spectral_norm_upstream = False
 opt.optim_criterion = 'l1loss'
-opt.optim_iters = 150
+opt.optim_iters = 250
 opt.optim_method = 'stn'
 opt.optim_type = 'sgd'
 opt.out_dir = 'pitchreg/sportsfield_release/out/'
@@ -79,8 +79,8 @@ def calculate_pitch_coords(player_coords, homography_matrix, frame_shape, diagra
     normie_coords = normalise_coordinates(player_coords, frame_shape)
 
     # Calculate inverse of homography matrix directly
-    homography_matrix = homography_matrix.detach()
-    homogeneous_coords = torch.from_numpy(to_homogeneous(normie_coords)).cuda()
+    homography_matrix = homography_matrix.type(torch.DoubleTensor).cuda()
+    homogeneous_coords = torch.from_numpy(to_homogeneous(normie_coords)).type(torch.DoubleTensor).cuda()
     irl_points = []
     for n in range(homogeneous_coords.shape[0]):
         xy_warped = torch.matmul(homography_matrix, homogeneous_coords[n][0])  # H.bmm(xy)

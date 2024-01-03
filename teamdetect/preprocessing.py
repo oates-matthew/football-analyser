@@ -54,7 +54,7 @@ def save_img(images, teams, frame_id, detection_nos, bins=16):
 
         plt.tight_layout()
 
-        filename = "../../plots/team{}/frame{}/detection{}.png".format(teams[i], frame_id, detection_nos[i])
+        filename = "plots/team{}/frame{}/detection{}.png".format(teams[i], frame_id, detection_nos[i])
         directory = os.path.dirname(filename)
         if not os.path.exists(directory):
             os.makedirs(directory)

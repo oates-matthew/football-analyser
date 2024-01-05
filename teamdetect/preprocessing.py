@@ -8,7 +8,7 @@ import numpy as np
 def flatten(img):
     return img.flatten()
 
-
+ 
 def standardise(img):
     return img - np.mean(img) / np.std(img)
 

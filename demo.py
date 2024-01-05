@@ -6,6 +6,7 @@ import time
 import cv2
 import torch
 import sys
+import csv
 
 from pitchreg.kalmanfilter import KF
 
@@ -27,7 +28,7 @@ from deepeiou.deepeiou.yolox.data.data_augment import preproc
 from deepeiou.deepeiou.yolox.exp import get_exp
 from deepeiou.deepeiou.yolox.utils import fuse_model, get_model_info, postprocess
 from deepeiou.deepeiou.yolox.utils.visualize import plot_tracking
-from deepeiou.deepeiou.yolox.tracking_utils.timer import Timer
+from deepeiou.deepeiou.tracker.tracking_utils.timer import Timer
 
 from deepeiou.deepeiou.tracker.Deep_EIoU import Deep_EIoU
 from deepeiou.deepeiou.reid.torchreid.utils import FeatureExtractor
@@ -196,7 +197,7 @@ class Predictor(object):
             img = img.half()  # to FP16
 
         with torch.no_grad():
-            timer.tic()
+            timer.coocoo()
             outputs = self.model(img)
             if self.decoder is not None:
                 outputs = self.decoder(outputs, dtype=outputs.type())
@@ -204,6 +205,12 @@ class Predictor(object):
                 outputs, self.num_classes, self.confthre, self.nmsthre
             )
         return outputs, img_info
+
+
+def log_times(timings):
+    with open("evaldata/component_timings.csv", 'a', newline='') as file:  # 'a' for append mode
+        writer = csv.writer(file)
+        writer.writerow(timings)
 
 
 def imageflow_demo(predictor, extractor, vis_folder, current_time, args):
@@ -228,19 +235,25 @@ def imageflow_demo(predictor, extractor, vis_folder, current_time, args):
     kf = KF()
     while True:
         diagram = cv2.imread("pitchreg/sportsfield_release/data/pitch_diagram.png")
+        timelogs = []
 
         ret_val, frame = cap.read()
         if ret_val:
-            if frame_id % 60:
+            timer.coocoo()
+            if frame_id % 30 == 0:
                 h_matrix = run(frame, diagram)
+                logger.info('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, timer.average_time)))
             else:
                 h_matrix = run(frame, diagram, refresh=False)
 
-            if frame_id % 30 == 0:
-                logger.info('Processing frame {} ({:.2f} fps)'.format(frame_id, 1. / max(1e-5, timer.average_time)))
+            timelogs.append(timer.tic()) # matrix tic
+            timer.reset()
             filtered_h_matrix = kf.process_homography(h_matrix)
+            timelogs.append(timer.tic()) # KF tic
+            timer.reset()
 
             outputs, img_info = predictor.inference(frame, timer)
+
             if outputs[0] is not None:
                 det = outputs[0].cpu().detach().numpy()
                 scale = min(1440 / width, 800 / height)
@@ -253,6 +266,9 @@ def imageflow_demo(predictor, extractor, vis_folder, current_time, args):
                     embs = extractor(cropped_imgs)
                     embs = embs.cpu().detach().numpy()
                     online_targets = tracker.update(det, embs)
+                    timelogs.append(timer.tic())  # track tic
+                    timer.reset()
+
                     online_tlwhs = []
                     fov_coords = []
                     online_ids = []
@@ -291,10 +307,10 @@ def imageflow_demo(predictor, extractor, vis_folder, current_time, args):
                         timer.toc()
                         # if sum(player_teams[obj_id]) >= len(player_teams[obj_id]) / 2:
                         teams = [1 if sum(teams) >= len(teams) / 2 else 0 for teams in player_teams_counts.values()]
-                        if frame_id == 60:
 
-                            save_img(online_img, teams, frame_id, online_ids)
                         player_teams = dict(zip(player_teams_counts.keys(), teams))
+                        timelogs.append(timer.tic())
+                        timer.reset()
                         online_im = plot_tracking(
                             img_info['raw_img'], player_teams, online_tlwhs, online_ids, frame_id=frame_id + 1, fps=1.)
                         real_coords = calculate_pitch_coords(fov_coords, filtered_h_matrix, frame.shape[:2], diagram.shape[:2])
@@ -310,6 +326,7 @@ def imageflow_demo(predictor, extractor, vis_folder, current_time, args):
                     break
         else:
             break
+        log_times(timelogs)
         frame_id += 1
 
     if args.save_result:
